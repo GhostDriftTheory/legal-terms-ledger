@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Legal ADIC Fair Contract Ledger</title>
+    
+    <!-- Design: Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React Core -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel for JSX/TS -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Google Fonts: Inter (replacing Noto Sans JP for English) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        html { scroll-behavior: smooth; }
+        * { -webkit-tap-highlight-color: transparent; }
+        
+        /* Flash animation */
+        @keyframes flash {
+            0% { background-color: rgba(99, 102, 241, 0.1); }
+            50% { background-color: rgba(99, 102, 241, 0.3); }
+            100% { background-color: transparent; }
+        }
+        .animate-flash {
+            animation: flash 1s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-700">
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="react, typescript">
+        const { useMemo, useState, useEffect, useRef } = React;
+
+        // --- Icons (SVG Components) ---
+        const IconBase = ({ children, className, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
+        );
+        const FileText = (p) => <IconBase {...p}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></IconBase>;
+        const Calculator = (p) => <IconBase {...p}><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></IconBase>;
+        const ShieldAlert = (p) => <IconBase {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>;
+        const ShieldCheck = (p) => <IconBase {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></IconBase>;
+        const ArrowRight = (p) => <IconBase {...p}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></IconBase>;
+        const RefreshCw = (p) => <IconBase {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconBase>;
+        const AlertTriangle = (p) => <IconBase {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></IconBase>;
+        const CheckCircle2 = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></IconBase>;
+        const Settings = (p) => <IconBase {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase>;
+        const BookOpen = (p) => <IconBase {...p}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></IconBase>;
+        const Gavel = (p) => <IconBase {...p}><path d="m14 13-7.5 7.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L11 10"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></IconBase>;
+        const History = (p) => <IconBase {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></IconBase>;
+        const Users = (p) => <IconBase {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconBase>;
+        const Search = (p) => <IconBase {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconBase>;
+        const Book = (p) => <IconBase {...p}><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></IconBase>;
+        const ChevronDown = (p) => <IconBase {...p}><path d="m6 9 6 6 6-6"/></IconBase>;
+        const XIcon = (p) => <IconBase {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>;
+        const ArrowUp = (p) => <IconBase {...p}><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></IconBase>;
+        const ThumbsUp = (p) => <IconBase {...p}><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></IconBase>;
+        const Activity = (p) => <IconBase {...p}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></IconBase>;
+
+        // --- Constants & Config ---
+        const RULE_SETS = [
+          {
+            id: "industryBaseline",
+            name: "Industry Baseline v1.0",
+            maxPayDays: 60,
+            maxInspectionDays: 30,
+            minLateRate: 0.10,
+            minLateRateBps: 1000,
+            targetScore: 80,
+          },
+          {
+            id: "freelanceUnion",
+            name: "Freelance Union v0.3",
+            maxPayDays: 45,
+            maxInspectionDays: 21,
+            minLateRate: 0.146,
+            minLateRateBps: 1460,
+            targetScore: 85,
+          },
+        ];
+
+        const CONTRACT_TEMPLATES = [
+          {
+            id: "friendly",
+            title: "Contract A (Fair)",
+            label: "White Contract",
+            type: "good",
+            text: `Article X (Compensation and Payment Terms)
+1. Party A shall pay Party B the amount of 800,000 JPY (Tax Included) as compensation for the Work.
+2. Party A shall make the payment within 30 days after the inspection of the deliverables is completed.
+3. If Party A delays the payment, Party A shall pay late payment interest at a rate of 14.6% per annum.
+4. The inspection period shall be 10 days from the date of delivery.`,
+            params: { amount: 80, payDays: 30, inspectionDays: 10, lateRate: 0.146, taxIncluded: true, taxRate: 0.10 },
+            storyTitle: "Why this is SAFE (Summary)",
+            storyIcon: ThumbsUp,
+            storyColor: "emerald",
+            simpleExplanation: [
+              "30-day term: Faster than industry standard, good for cash flow.",
+              "10-day inspection: Low risk of being left in limbo.",
+              "14.6% late fee: Strong deterrent against delayed payments."
+            ]
+          },
+          {
+            id: "harsh",
+            title: "Contract B (Unfair)",
+            label: "Black Contract",
+            type: "bad",
+            text: `Article X (Compensation and Payment Terms)
+1. Party A shall pay Party B the amount of 800,000 JPY (Tax Excluded) as compensation for the Work.
+2. Party A shall make the payment within 90 days after the inspection of the deliverables is completed.
+3. Even if payment is delayed, late payment interest shall be capped at 3% per annum.
+4. The inspection period shall be determined by Party A and is unrestricted unless otherwise specified.`,
+            params: { amount: 80, payDays: 90, inspectionDays: 999, lateRate: 0.03, taxIncluded: false, taxRate: 0.10 },
+            storyTitle: "Why this is RISKY (Summary)",
+            storyIcon: AlertTriangle,
+            storyColor: "rose",
+            simpleExplanation: [
+              "90-day term: Exceeds the Subcontract Act limit (60 days).",
+              "Unrestricted inspection: Risk of never being paid.",
+              "3% late fee: Too low to hurt the payer, encourages delay."
+            ]
+          },
+        ];
+
+        // --- Logic Functions ---
+        function getHighlightedSegments(text, key) {
+          if (!key) return [{ text, mark: false }];
+          // Updated Regex for English Contract Text
+          const patterns = {
+            amount: /pay Party B the amount [^.]*\./,
+            pay: /payment within [^.]* days [^.]*\./,
+            inspection: /inspection period [^.]*\./,
+            late: /late payment interest [^.]*\./
+          };
+          const pattern = patterns[key];
+          if (!pattern) return [{ text, mark: false }];
+
+          const segments = [];
+          let lastIndex = 0;
+          const globalPattern = new RegExp(pattern.source, "gli"); // Case insensitive
+          let m;
+          while ((m = globalPattern.exec(text)) !== null) {
+            if (m.index > lastIndex) segments.push({ text: text.slice(lastIndex, m.index), mark: false });
+            segments.push({ text: m[0], mark: true });
+            lastIndex = m.index + m[0].length;
+          }
+          if (lastIndex < text.length) segments.push({ text: text.slice(lastIndex), mark: false });
+          return segments;
+        }
+
+        function computeTaxInfo(amount, taxRate, taxIncluded) {
+          const rawBase = taxIncluded ? amount / (1 + taxRate) : amount;
+          const base = Math.round(rawBase * 10) / 10;
+          const tax = Math.round(base * taxRate * 10) / 10;
+          const total = taxIncluded ? amount : Math.round((base + tax) * 10) / 10;
+          return { base, tax, total };
+        }
+
+        function computePenalty(params, rs) {
+          const payOver = Math.max(0, params.payDays - rs.maxPayDays);
+          const penPay = Math.min(40, Math.ceil(payOver / 5) * 4);
+
+          const effInsp = params.inspectionDays >= 999 ? rs.maxInspectionDays + 60 : params.inspectionDays;
+          const inspOver = Math.max(0, effInsp - rs.maxInspectionDays);
+          const penInspection = Math.min(30, Math.ceil(inspOver / 7) * 3);
+
+          const lateBps = Math.round(params.lateRate * 10000);
+          let penLate = 0;
+          if (lateBps < rs.minLateRateBps) {
+            const num = (rs.minLateRateBps - lateBps) * 30;
+            penLate = Math.min(30, Math.ceil(num / rs.minLateRateBps));
+          }
+
+          const totalPenalty = penPay + penInspection + penLate;
+          return { penPay, penInspection, penLate, totalPenalty, score: Math.max(0, 100 - totalPenalty) };
+        }
+
+        function buildLedger(params, rs, pen, ruleName, riskIdx) {
+          let s = 1;
+          const tax = computeTaxInfo(params.amount, params.taxRate, params.taxIncluded);
+
+          return [
+            { step: s++, op: "parse_amount", inputs: `text→"Compensation"`, outputs: `amt=${params.amount}(10k), ${params.taxIncluded ? "Inc" : "Exc"}`, note: "Extracted Amount" },
+            { step: s++, op: "compute_tax", inputs: `amt=${params.amount}, rate=${(params.taxRate*100).toFixed(0)}%, in=${params.taxIncluded}`, outputs: `base=${tax.base}, tax=${tax.tax}, tot=${tax.total}`, note: "Calc Tax" },
+            { step: s++, op: "parse_pay_days", inputs: `text→"${params.payDays} days"`, outputs: `val=${params.payDays}`, note: "Payment Term" },
+            { step: s++, op: "parse_insp_days", inputs: params.inspectionDays >= 999 ? 'text→"Unlimited"' : `text→"${params.inspectionDays} days"`, outputs: `val=${params.inspectionDays >= 999 ? '∞' : params.inspectionDays}`, note: "Insp. Period" },
+            { step: s++, op: "parse_late_rate", inputs: `text→"${(params.lateRate * 100).toFixed(1)}%"`, outputs: `val=${Math.round(params.lateRate*10000)}bps`, note: "Late Fee Rate" },
+            { step: s++, op: "apply_ruleset", inputs: `id=${rs.id}`, outputs: `target=${rs.targetScore}`, note: "Apply Rule" },
+            { step: s++, op: "calc_pen_pay", inputs: `val=${params.payDays}, max=${rs.maxPayDays}`, outputs: `pen=-${pen.penPay}`, note: "-4 per 5d over" },
+            { step: s++, op: "calc_pen_insp", inputs: `val=${params.inspectionDays >= 999 ? '∞' : params.inspectionDays}, max=${rs.maxInspectionDays}`, outputs: `pen=-${pen.penInspection}`, note: "-3 per 7d over" },
+            { step: s++, op: "calc_pen_late", inputs: `val=${Math.round(params.lateRate*10000)}, min=${rs.minLateRateBps}`, outputs: `pen=-${pen.penLate}`, note: "Insufficient Rate" },
+            { step: s++, op: "compute_score", inputs: `100 - ${pen.totalPenalty}`, outputs: `score=${pen.score}`, note: "Final Score" },
+            { step: s++, op: "compute_risk", inputs: `score=${pen.score}, total=${Math.round(tax.total)}0k`, outputs: `risk=${riskIdx.toLocaleString()}`, note: "Risk Potential" },
+          ];
+        }
+
+        function createLedgerId(params, rs) {
+          const seed = JSON.stringify({ ...params, ruleSetId: rs.id, bps: rs.minLateRateBps });
+          let h = 0;
+          for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+          return h.toString(16).padStart(8, '0').slice(0, 8).toUpperCase();
+        }
+
+        function verifyLedger(params, rs, ledger, originalPen) {
+          const re = computePenalty(params, rs);
+          const coreMatch = re.score === originalPen.score && re.totalPenalty === originalPen.totalPenalty;
+          const last = ledger[ledger.length - 2]; 
+          const lastMatch = last && last.op === "compute_score" && last.outputs.includes(`score=${re.score}`);
+          const ops = new Set(ledger.map(e => e.op));
+          const hasTaxOps = ops.has("parse_amount") && ops.has("compute_tax");
+          return coreMatch && lastMatch && hasTaxOps;
+        }
+
+        function suggestMinimalPatch(params, rs) {
+          const target = rs.targetScore;
+          const candidates = [];
+
+          // PayDays
+          for (let d = params.payDays - 5; d >= 15; d -= 5) {
+            const c = { ...params, payDays: d };
+            const p = computePenalty(c, rs);
+            if (p.score >= target) {
+              candidates.push({ patchedParams: c, newPenalty: p, changedField: "payDays", changeCost: (params.payDays - d) / 5 });
+              break;
+            }
+          }
+          // Inspection
+          const effInsp = params.inspectionDays >= 999 ? rs.maxInspectionDays + 60 : params.inspectionDays;
+          if (effInsp > rs.maxInspectionDays) {
+            for (let d = effInsp - 7; d >= rs.maxInspectionDays; d -= 7) {
+              const c = { ...params, inspectionDays: d };
+              const p = computePenalty(c, rs);
+              if (p.score >= target) {
+                candidates.push({ patchedParams: c, newPenalty: p, changedField: "inspectionDays", changeCost: Math.ceil((effInsp - d) / 7) });
+                break;
+              }
+            }
+          }
+          // LateRate
+          const lbps = Math.round(params.lateRate * 10000);
+          if (lbps < rs.minLateRateBps) {
+            const c = { ...params, lateRate: rs.minLateRateBps / 10000 };
+            const p = computePenalty(c, rs);
+            if (p.score >= target) {
+              candidates.push({ patchedParams: c, newPenalty: p, changedField: "lateRate", changeCost: (rs.minLateRateBps - lbps) / 100 });
+            }
+          }
+
+          if (candidates.length === 0) return null;
+          return candidates.reduce((best, cur) => (cur.changeCost < best.changeCost ? cur : best), candidates[0]);
+        }
+
+        // --- Components ---
+
+        const DeepDiveSection = ({ params, ruleSet, penalty, isOpen, onClose }) => {
+          const ref = useRef(null);
+          useEffect(() => { if (isOpen && ref.current) ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, [isOpen]);
+
+          if (!isOpen) return null;
+
+          const payComment = penalty.penPay > 20 ? "Significant Violation. Far exceeds standard." : penalty.penPay > 0 ? "Exceeds Standard. Impacts cash flow." : "Within Standard. Safe.";
+          const inspComment = penalty.penInspection > 20 ? "Unlimited Risk. Extremely Dangerous." : penalty.penInspection > 0 ? "Risk of prolongation." : "Short term. Safe.";
+          const lateComment = penalty.penLate > 20 ? "Too low to work." : penalty.penLate > 0 ? "Weak deterrent." : "Sufficient deterrent.";
+
+          return (
+            <div ref={ref} className="mt-8 mb-12 bg-slate-50 border border-slate-200 rounded-xl p-5 md:p-8 text-slate-700 animate-in fade-in slide-in-from-bottom-4 shadow-inner">
+              <div className="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <Book className="w-5 h-5 text-indigo-600" />
+                    <span className="hidden sm:inline">ADIC Deep Dive: </span>
+                    Score Transparency & Defining "Normal"
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">Not AI "intuition", but mathematically determined reasons.</p>
+                </div>
+                <button onClick={onClose} className="p-1.5 hover:bg-slate-200 rounded-full transition-colors"><XIcon className="w-5 h-5 text-slate-400" /></button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-8 text-sm">
+                <div className="space-y-6">
+                  <section>
+                    <h4 className="font-bold text-indigo-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-2"><div className="w-2 h-2 bg-indigo-500 rounded-full"/> 1. Vectorization to Integers</h4>
+                    <p className="text-xs leading-relaxed text-slate-600">We discard natural language and convert the contract into 3 integers for evaluation.</p>
+                    <div className="bg-white p-2.5 rounded border border-slate-200 font-mono text-xs mt-2 text-slate-600">
+                      Input = {'{'} pay: {params.payDays}, insp: {params.inspectionDays >= 999 ? 999 : params.inspectionDays}, late: {Math.round(params.lateRate*10000)} {'}'}
+                      <br/><span className="text-indigo-600 font-bold block mt-1">*Linked to sliders in real-time</span>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h4 className="font-bold text-indigo-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-2"><div className="w-2 h-2 bg-indigo-500 rounded-full"/> 2. Deterministic Calculation</h4>
+                    <div className="space-y-2 font-mono text-[10px] sm:text-xs">
+                      <div className="bg-white border border-slate-100 rounded p-2">
+                        <div className="flex justify-between border-b border-dashed border-slate-200 pb-1 mb-1">
+                          <span className="text-slate-500">Payment Penalty (Limit {ruleSet.maxPayDays}d)</span>
+                          <span className="text-rose-600 font-bold">-{penalty.penPay}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 leading-tight">{payComment}</div>
+                      </div>
+                      
+                      <div className="bg-white border border-slate-100 rounded p-2">
+                        <div className="flex justify-between border-b border-dashed border-slate-200 pb-1 mb-1">
+                          <span className="text-slate-500">Insp. Penalty (Limit {ruleSet.maxInspectionDays}d)</span>
+                          <span className="text-rose-600 font-bold">-{penalty.penInspection}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 leading-tight">{inspComment}</div>
+                      </div>
+
+                      <div className="bg-white border border-slate-100 rounded p-2">
+                        <div className="flex justify-between border-b border-dashed border-slate-200 pb-1 mb-1">
+                          <span className="text-slate-500">Late Fee Penalty (Min {ruleSet.minLateRateBps}bps)</span>
+                          <span className="text-rose-600 font-bold">-{penalty.penLate}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 leading-tight">{lateComment}</div>
+                      </div>
+
+                      <div className="flex justify-between pt-1 font-bold text-indigo-700 bg-indigo-50/50 p-2 rounded mt-2">
+                        <span>Total Score = 100 - {penalty.totalPenalty}</span>
+                        <span>{penalty.score} pts</span>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <div className="space-y-6 md:border-l md:border-slate-200 md:pl-8 flex flex-col justify-between">
+                  <div>
+                    <section className="mb-6">
+                        <h4 className="font-bold text-indigo-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-2"><div className="w-2 h-2 bg-indigo-500 rounded-full"/> 3. Separation of Values</h4>
+                        <p className="text-xs leading-relaxed text-slate-600">
+                        The political debate of "what is normal" is sealed within the <span className="font-mono bg-slate-100 px-1 rounded">RuleSet</span>. Once rules are set, judgment is reduced to a mathematical proposition (Score &lt; Target) that yields the <strong className="text-indigo-700">same result regardless of who calculates it</strong>.
+                        </p>
+                    </section>
+                    <section>
+                        <h4 className="font-bold text-indigo-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-2"><div className="w-2 h-2 bg-indigo-500 rounded-full"/> 4. Verifiability</h4>
+                        <p className="text-xs leading-relaxed text-slate-600">
+                        The calculation process remains in the Ledger. Third parties can receive the JSON and re-calculate with their own calculators to verify. This eliminates the "AI Black Box" and fulfills accountability.
+                        </p>
+                    </section>
+                  </div>
+                  <button onClick={onClose} className="self-center flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors mt-4 py-2 px-4 rounded hover:bg-slate-200/50">
+                      <ArrowUp className="w-3 h-3" /> Close Deep Dive
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const App = () => {
+          const [templateId, setTemplateId] = useState("harsh");
+          const [ruleSetId, setRuleSetId] = useState("industryBaseline");
+          const [shared, setShared] = useState(false);
+          const [hlKey, setHlKey] = useState(null);
+          const [showDeepDive, setShowDeepDive] = useState(false);
+          const [showLedger, setShowLedger] = useState(false);
+          const [draftAmount, setDraftAmount] = useState(null);
+          const [justUpdated, setJustUpdated] = useState(false);
+
+          const template = useMemo(() => CONTRACT_TEMPLATES.find(t => t.id === templateId), [templateId]);
+          const ruleSet = useMemo(() => RULE_SETS.find(r => r.id === ruleSetId), [ruleSetId]);
+          const [params, setParams] = useState(template.params);
+
+          // Reset on template change
+          useEffect(() => {
+            setParams(template.params);
+            setDraftAmount(template.params.amount);
+            setShared(false);
+            setShowDeepDive(false);
+            setShowLedger(false);
+            setJustUpdated(false);
+          }, [template]);
+
+          const penalty = useMemo(() => computePenalty(params, ruleSet), [params, ruleSet]);
+          
+          const taxInfo = useMemo(() => computeTaxInfo(params.amount, params.taxRate, params.taxIncluded), [params.amount, params.taxRate, params.taxIncluded]);
+          // Draft info (for display)
+          const draftTaxInfo = useMemo(() => computeTaxInfo(draftAmount ?? params.amount, params.taxRate, params.taxIncluded), [draftAmount, params.amount, params.taxRate, params.taxIncluded]);
+
+          // Risk Index Calculation
+          const riskIndex = useMemo(() => {
+            const blackness = Math.max(0, 100 - penalty.score);
+            const total = Math.max(0, Math.round(taxInfo.total));
+            return blackness * total;
+          }, [penalty.score, taxInfo.total]);
+
+          const ledger = useMemo(() => buildLedger(params, ruleSet, penalty, ruleSet.name, riskIndex), [params, ruleSet, penalty, riskIndex]);
+          const ledgerId = useMemo(() => createLedgerId(params, ruleSet), [params, ruleSet]);
+          const verified = useMemo(() => verifyLedger(params, ruleSet, ledger, penalty), [params, ruleSet, ledger, penalty]);
+          const patch = useMemo(() => suggestMinimalPatch(params, ruleSet), [params, ruleSet]);
+          const segments = useMemo(() => getHighlightedSegments(template.text, hlKey), [template.text, hlKey]);
+
+          // Simulation
+          const handleSimulate = () => {
+            setParams(prev => ({ ...prev, amount: draftAmount }));
+            setJustUpdated(true);
+            setTimeout(() => setJustUpdated(false), 2000);
+          };
+
+          const mapOpToHl = (op) => {
+            if (op.includes("amount")) return "amount";
+            if (op.includes("pay")) return "pay";
+            if (op.includes("insp")) return "inspection";
+            if (op.includes("late")) return "late";
+            return null;
+          };
+
+          const getRiskColor = (s, t) => {
+            if (s >= t) return { bg: "bg-emerald-50", border: "border-emerald-600", text: "text-emerald-700", meter: "bg-emerald-600", icon: ShieldCheck, label: "Safe Zone" };
+            if (s >= t - 10) return { bg: "bg-amber-50", border: "border-amber-500", text: "text-amber-700", meter: "bg-amber-500", icon: AlertTriangle, label: "Caution" };
+            return { bg: "bg-rose-50", border: "border-rose-500", text: "text-rose-700", meter: "bg-rose-600", icon: ShieldAlert, label: "Danger" };
+          };
+
+          const getParamStatus = (val, max, pen) => {
+            if (pen === 0) return { color: "text-emerald-600", bg: "bg-emerald-50", label: "OK (Safe)" };
+            if (pen > 20) return { color: "text-rose-600", bg: "bg-rose-50", label: `Violation (-${pen}pts)` };
+            return { color: "text-amber-600", bg: "bg-amber-50", label: `Warning (-${pen}pts)` };
+          };
+          
+          const getLateStatus = (val, min, pen) => {
+            if (pen === 0) return { color: "text-emerald-600", bg: "bg-emerald-50", label: "OK" };
+            return { color: "text-rose-600", bg: "bg-rose-50", label: `Low (-${pen}pts)` };
+          };
+
+          const risk = getRiskColor(penalty.score, ruleSet.targetScore);
+          const RiskIcon = risk.icon;
+          const isHarsh = template.id === "harsh";
+          const StoryIcon = template.storyIcon;
+
+          const renderPatchInfo = (p) => {
+            const config = {
+              payDays: { label: "Payment Term", old: `${params.payDays}d`, new: `${p.patchedParams.payDays}d` },
+              inspectionDays: { label: "Inspection", old: params.inspectionDays >= 999 ? "Unlimited" : `${params.inspectionDays}d`, new: `${p.patchedParams.inspectionDays}d` },
+              lateRate: { label: "Late Penalty", old: `${Math.round(params.lateRate*10000)}bps`, new: `${Math.round(p.patchedParams.lateRate*10000)}bps` }
+            }[p.changedField];
+
+            return (
+              <React.Fragment>
+                <div className="flex justify-between items-center mb-1"><span className="text-slate-500 font-medium">{config.label}</span><ArrowRight className="w-3 h-3 text-slate-400" /></div>
+                <div className="flex justify-between items-end"><span className="text-slate-400 line-through decoration-slate-400 text-xs">{config.old}</span><span className="text-indigo-600 font-bold text-base">{config.new}</span></div>
+              </React.Fragment>
+            );
+          };
+
+          return (
+            <div className="min-h-screen pb-24 text-sm sm:text-base">
+              <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: `linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)`, backgroundSize: '20px 20px' }}></div>
+
+              {/* Header */}
+              <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+                <div className="max-w-xl md:max-w-7xl mx-auto px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-indigo-700 mb-0.5">
+                        <Gavel className="w-4 h-4" /><span className="text-[10px] sm:text-xs font-bold tracking-wider uppercase">Legal ADIC</span>
+                      </div>
+                      <h1 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight leading-tight">Fair Contract Ledger</h1>
+                    </div>
+                    {/* Template Tab */}
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                        {CONTRACT_TEMPLATES.map((t) => (
+                            <button
+                                key={t.id}
+                                onClick={() => setTemplateId(t.id)}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${templateId === t.id ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-w-xl md:max-w-7xl mx-auto px-4 py-4 space-y-6 relative z-10">
+                
+                {/* Story Card */}
+                <div className={`rounded-xl p-4 shadow-sm border ${template.type === 'good' ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
+                    <div className="flex gap-3 items-start">
+                        <div className={`p-2 rounded-full shrink-0 ${template.type === 'good' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                            <StoryIcon className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className={`font-bold text-sm mb-1 ${template.type === 'good' ? 'text-emerald-800' : 'text-rose-800'}`}>{template.storyTitle}</h3>
+                            <ul className="text-xs space-y-1 text-slate-700">
+                                {template.simpleExplanation.map((line, i) => (
+                                    <li key={i} className="leading-snug">• {line}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    {/* Left: Input & Params */}
+                    <div className="md:col-span-7 space-y-4">
+                        <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-slate-400" /><h2 className="text-sm font-bold text-slate-700">STEP 1: Check Contract Terms</h2>
+                            </div>
+                            <div className="p-4 flex-1 flex flex-col gap-4">
+                                <div className="relative group">
+                                    <div className="w-full h-36 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-mono whitespace-pre-wrap leading-relaxed overflow-y-auto">
+                                        {segments.map((s, i) => s.mark ? <mark key={i} className="bg-amber-200 text-slate-900 rounded px-0.5">{s.text}</mark> : <span key={i}>{s.text}</span>)}
+                                    </div>
+                                    <div className="mt-1 text-[10px] text-slate-400 text-right">*Tap the ledger below to highlight text</div>
+                                </div>
+
+                                <div className="space-y-3 pt-3 border-t border-slate-100">
+                                    <div className="flex items-center justify-between text-[10px]">
+                                        <span className="text-slate-500 font-bold uppercase tracking-wider">▼ Condition Simulation</span>
+                                        <Settings className="w-3 h-3 text-slate-400" />
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        {/* Amount & Tax */}
+                                        <div className="bg-slate-50 px-3 py-3 rounded border border-slate-200 transition-all hover:border-indigo-300 relative overflow-hidden">
+                                            <div className="flex justify-between items-start mb-2 relative z-10">
+                                                <div className="flex flex-col">
+                                                    <span className="text-slate-600 text-xs font-bold flex items-center gap-1.5"><Calculator className="w-3.5 h-3.5 text-indigo-500"/> Compensation</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="font-mono text-sm font-bold text-indigo-700">{draftTaxInfo.total.toFixed(1)} <span className="text-xs font-normal text-slate-500">0k JPY (Inc)</span></span>
+                                                    <div className="text-[10px] text-slate-400 mt-0.5">
+                                                        Net: <span className="font-bold text-slate-600">{draftTaxInfo.base.toFixed(1)}</span> / Tax: {draftTaxInfo.tax.toFixed(1)}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <input type="range" min={10} max={300} step={10} value={draftAmount ?? params.amount} onChange={(e) => setDraftAmount(Number(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500 touch-pan-x mb-2 relative z-10" />
+                                            <div className="flex justify-between items-center text-[10px] relative z-10">
+                                                <div className="flex gap-3">
+                                                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" checked={params.taxIncluded} onChange={() => setParams(p => ({...p, taxIncluded: true}))} className="accent-indigo-500"/> Inc</label>
+                                                    <label className="flex items-center gap-1 cursor-pointer"><input type="radio" checked={!params.taxIncluded} onChange={() => setParams(p => ({...p, taxIncluded: false}))} className="accent-indigo-500"/> Excl</label>
+                                                </div>
+                                                <button 
+                                                    onClick={handleSimulate}
+                                                    disabled={draftAmount === params.amount}
+                                                    className={`px-3 py-1 rounded-full font-bold transition-all flex items-center gap-1 ${draftAmount !== params.amount ? 'bg-indigo-600 text-white shadow-md scale-105' : 'bg-slate-200 text-slate-400 cursor-default'}`}
+                                                >
+                                                    <RefreshCw className="w-3 h-3" /> Recalculate Risk
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Payment Term */}
+                                        {(() => {
+                                            const status = getParamStatus(params.payDays, ruleSet.maxPayDays, penalty.penPay);
+                                            return (
+                                                <div className={`px-3 py-3 rounded border transition-all ${status.bg} ${penalty.penPay > 0 ? 'border-rose-200' : 'border-emerald-200'}`}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-slate-600 text-xs font-bold flex items-center gap-1"><History className="w-3.5 h-3.5"/> Payment Term</span>
+                                                        <span className={`font-mono text-xs font-bold ${status.color}`}>{status.label}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-end mb-2">
+                                                        <span className="text-[10px] text-slate-400">Std: Within {ruleSet.maxPayDays}d</span>
+                                                        <span className="font-mono text-sm font-bold text-slate-700">{params.payDays} <span className="text-xs font-normal">days</span></span>
+                                                    </div>
+                                                    <input type="range" min={15} max={120} step={5} value={params.payDays} onChange={(e) => setParams(prev => ({...prev, payDays: Number(e.target.value)}))} className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer touch-pan-x ${penalty.penPay > 0 ? 'bg-rose-200 accent-rose-500' : 'bg-emerald-200 accent-emerald-500'}`} />
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Inspection Period */}
+                                        {(() => {
+                                            const status = getParamStatus(params.inspectionDays, ruleSet.maxInspectionDays, penalty.penInspection);
+                                            const valText = params.inspectionDays >= 999 ? "Unlimited" : `${params.inspectionDays} days`;
+                                            return (
+                                                <div className={`px-3 py-3 rounded border transition-all ${status.bg} ${penalty.penInspection > 0 ? 'border-rose-200' : 'border-emerald-200'}`}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-slate-600 text-xs font-bold flex items-center gap-1"><Search className="w-3.5 h-3.5"/> Inspection</span>
+                                                        <span className={`font-mono text-xs font-bold ${status.color}`}>{status.label}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-end mb-2">
+                                                        <span className="text-[10px] text-slate-400">Std: Within {ruleSet.maxInspectionDays}d</span>
+                                                        <span className="font-mono text-sm font-bold text-slate-700">{valText}</span>
+                                                    </div>
+                                                    <div className="flex gap-2 items-center">
+                                                        <input 
+                                                            type="range" 
+                                                            min={7} 
+                                                            max={60} 
+                                                            step={7} 
+                                                            disabled={params.inspectionDays >= 999}
+                                                            value={params.inspectionDays >= 999 ? 60 : params.inspectionDays} 
+                                                            onChange={(e) => setParams(prev => ({...prev, inspectionDays: Number(e.target.value)}))} 
+                                                            className={`flex-1 h-1.5 rounded-lg appearance-none cursor-pointer touch-pan-x ${params.inspectionDays >= 999 ? 'bg-slate-200' : (penalty.penInspection > 0 ? 'bg-rose-200 accent-rose-500' : 'bg-emerald-200 accent-emerald-500')}`} 
+                                                        />
+                                                        <label className="flex items-center gap-1 text-[10px] cursor-pointer whitespace-nowrap">
+                                                            <input type="checkbox" checked={params.inspectionDays >= 999} onChange={(e) => setParams(prev => ({...prev, inspectionDays: e.target.checked ? 999 : 14}))} className="accent-rose-500"/> 
+                                                            Unlim.
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Late Penalty */}
+                                        {(() => {
+                                            const lateVal = Math.round(params.lateRate * 10000);
+                                            const status = getLateStatus(lateVal, ruleSet.minLateRateBps, penalty.penLate);
+                                            return (
+                                                <div className={`px-3 py-3 rounded border transition-all ${status.bg} ${penalty.penLate > 0 ? 'border-rose-200' : 'border-emerald-200'}`}>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-slate-600 text-xs font-bold flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5"/> Late Penalty</span>
+                                                        <span className={`font-mono text-xs font-bold ${status.color}`}>{status.label}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-end mb-2">
+                                                        <span className="text-[10px] text-slate-400">Std: >{(ruleSet.minLateRateBps/100).toFixed(1)}% /yr</span>
+                                                        <span className="font-mono text-sm font-bold text-slate-700">{(params.lateRate * 100).toFixed(1)}% /yr</span>
+                                                    </div>
+                                                    <input type="range" min={0} max={20} step={0.1} value={params.lateRate * 100} onChange={(e) => setParams(prev => ({...prev, lateRate: Number(e.target.value) / 100}))} className={`w-full h-1.5 rounded-lg appearance-none cursor-pointer touch-pan-x ${penalty.penLate > 0 ? 'bg-rose-200 accent-rose-500' : 'bg-emerald-200 accent-emerald-500'}`} />
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    {/* Right: Score & Result */}
+                    <div className="md:col-span-5 space-y-4">
+                        <section className={`bg-white border rounded-xl overflow-hidden shadow-md p-5 flex flex-col items-center justify-center gap-3 relative ${risk.border}`}>
+                            <div className="absolute top-0 left-0 w-full bg-slate-50/50 border-b border-slate-100 px-4 py-1.5 flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">STEP 2: Fairness Score</span>
+                                <span className="text-[10px] text-slate-400">Target: {ruleSet.targetScore}pts</span>
+                            </div>
+                            <div className="mt-6 relative flex items-center justify-center">
+                                <svg className="w-32 h-32 transform -rotate-90">
+                                    <circle cx="50%" cy="50%" r="42%" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-100" />
+                                    <circle cx="50%" cy="50%" r="42%" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={264} strokeDashoffset={264 - (264 * penalty.score) / 100} className={`${risk.text} transition-all duration-1000 ease-out`} strokeLinecap="round" />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span className={`text-4xl font-bold ${risk.text}`}>{penalty.score}</span>
+                                    <span className="text-[10px] text-slate-400">/ 100</span>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowDeepDive(true)} className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full border ${risk.bg} ${risk.border} ${risk.text} hover:opacity-80 transition-opacity cursor-pointer shadow-sm group`}>
+                                <RiskIcon className="w-4 h-4" />
+                                <span className="font-bold">{risk.label}</span>
+                                <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                            </button>
+                        </section>
+
+                        {/* Risk Potential Card */}
+                        <div className={`border rounded-xl p-4 transition-all duration-300 ${justUpdated ? 'ring-4 ring-indigo-200' : ''} ${riskIndex > 5000 ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-200'} shadow-sm`}>
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                    <Activity className="w-3.5 h-3.5" /> Risk Potential
+                                </h3>
+                                <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold transition-all ${riskIndex > 5000 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>
+                                    Index: {riskIndex.toLocaleString()}
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 leading-snug mb-3">
+                                Total risk = "Contract Blackness × Deal Amount".<br/>
+                                <span className="text-rose-600 font-bold">Increasing the amount in a black contract causes this to explode.</span>
+                            </p>
+                            <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-2">
+                                <div 
+                                    className={`h-full transition-all duration-500 ${riskIndex > 5000 ? 'bg-rose-500' : 'bg-indigo-500'}`} 
+                                    style={{ width: `${Math.min(100, riskIndex / 100)}%` }}
+                                ></div>
+                            </div>
+                            <p className="text-[9px] text-slate-400 border-t border-slate-200/50 pt-2">
+                                *Since the contract terms stay the same even if amount changes, the Score above does not change.
+                            </p>
+                        </div>
+
+                        {/* Patch */}
+                        {patch && (
+                            <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm p-4 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                                    <RefreshCw className="w-4 h-4 text-indigo-600" />
+                                    <h3 className="text-xs font-bold text-slate-700">STEP 3: Suggestion (Min. Edit)</h3>
+                                </div>
+                                <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs relative overflow-hidden">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500" />
+                                    {renderPatchInfo(patch)}
+                                    <div className="mt-2 pt-2 border-t border-slate-200 flex justify-between items-center font-bold text-indigo-700">
+                                        <span>Score after patch</span>
+                                        <span>+{patch.newPenalty.score - penalty.score} pts (Total {patch.newPenalty.score}pts)</span>
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Social Impact */}
+                        {isHarsh && (
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 leading-relaxed shadow-inner">
+                                <h4 className="font-bold text-indigo-900 mb-2 flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5" /> If we scan all contracts?
+                                </h4>
+                                <p>Because we judge based on <strong>determined integer rules and a ledger</strong> rather than human reading, we can explain "why this score" later. This reveals "hidden black contracts" across an organization instantly.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Ledger (Default Closed) */}
+                <div className="mt-6 border-t border-slate-200 pt-6">
+                    <button 
+                        onClick={() => setShowLedger(!showLedger)} 
+                        className="w-full flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-colors group"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Calculator className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />
+                            <div className="text-left">
+                                <h3 className="text-sm font-bold text-slate-700">Calculation Proof (ADIC Ledger)</h3>
+                                <p className="text-[10px] text-slate-400">ID: {ledgerId}</p>
+                            </div>
+                        </div>
+                        <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${showLedger ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showLedger && (
+                        <div className="mt-4 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-2">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse min-w-[350px]">
+                                    <thead className="bg-slate-50 text-[10px] text-slate-500 font-bold border-b border-slate-200">
+                                        <tr><th className="px-3 py-2 w-10 text-center">#</th><th className="px-3 py-2">Op / Input</th><th className="px-3 py-2 text-right">Output</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-mono text-[10px] sm:text-xs text-slate-600">
+                                        {ledger.map((row) => (
+                                            <tr key={row.step} className="hover:bg-indigo-50/30 transition-colors" onMouseEnter={() => setHlKey(mapOpToHl(row.op))} onMouseLeave={() => setHlKey(null)}>
+                                                <td className="px-3 py-2.5 text-slate-400 text-center bg-slate-50/30">{row.step}</td>
+                                                <td className="px-3 py-2.5">
+                                                    <div className="text-indigo-600 font-bold mb-0.5">{row.op}</div>
+                                                    <div className="text-[9px] text-slate-400 break-all">{row.inputs}</div>
+                                                </td>
+                                                <td className="px-3 py-2.5 text-right">
+                                                    <div className="font-bold text-slate-700">{row.outputs}</div>
+                                                    {row.note && <div className="text-[9px] text-slate-400 mt-0.5 italic">{row.note}</div>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+                                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border text-[10px] font-bold ${verified ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+                                    {verified ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />} {verified ? "Verified" : "Tampered"}
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] text-slate-400 block">Total Penalty</span>
+                                    <span className="font-mono text-sm font-bold text-rose-600">-{penalty.totalPenalty} pts</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+              </div>
+
+              <DeepDiveSection params={params} ruleSet={ruleSet} penalty={penalty} isOpen={showDeepDive} onClose={() => setShowDeepDive(false)} />
+              
+              {!showDeepDive && (
+                <div className="fixed bottom-6 left-0 right-0 flex justify-center pointer-events-none z-40 px-4">
+                   <button onClick={() => setShowDeepDive(true)} className="pointer-events-auto bg-slate-800/95 backdrop-blur text-white text-xs font-bold px-5 py-3 rounded-full shadow-xl border border-slate-600 flex items-center gap-2 hover:bg-slate-700 transition-transform active:scale-95 animate-in fade-in slide-in-from-bottom-4">
+                     <Book className="w-4 h-4 text-indigo-300" />
+                     <span>Why this score? (Open Logic)</span>
+                   </button>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(<App />);
+    </script>
+</body>
+</html>
