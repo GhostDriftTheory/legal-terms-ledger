@@ -16,6 +16,9 @@ In the traditional legal world, "fairness" is often a matter of subjective inter
 
 This demo showcases a **Fair Contract Ledger** where every scoring logic is an "Open Logic," allowing both parties to verify the mathematical legitimacy of the contract terms before signing.
 
+🌐 GhostDrift Mathematical Institute (Official)
+[https://www.ghostdriftresearch.com/](https://www.ghostdriftresearch.com/)
+
 ## **⚠️ Important Disclaimer**
 
 **This project is a mathematical demonstration and a research tool for risk auditing. It does not provide legal advice, legal services, or professional legal opinions. This is not a legal advisory tool, and it should not be used as a substitute for professional legal counsel. The "Fairness Score" is a mathematical derivation based on specific parameters and does not constitute a legal judgment of validity.**
